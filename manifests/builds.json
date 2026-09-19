@@ -1,0 +1,31 @@
+{
+  "source": {
+    "id": "immortalwrt",
+    "branch": "master",
+    "url": "https://github.com/immortalwrt/immortalwrt"
+  },
+  "workflow": {
+    "manual": {
+      "default_device": "all"
+    },
+    "schedule": {
+      "default_devices": "all"
+    }
+  },
+  "builds": [
+    {
+      "id": "x86_64",
+      "op_name": "x86_64",
+      "target_config": "configs/targets/x86_64.config",
+      "app_config": "configs/apps/default.config",
+      "cache_scope": "x86_64"
+    },
+    {
+      "id": "nn6000-v2",
+      "op_name": "Link NN6000 v2",
+      "target_config": "configs/targets/nn6000-v2.config",
+      "app_config": "configs/apps/default.config",
+      "cache_scope": "nn6000-v2"
+    }
+  ]
+}
