@@ -1,112 +1,58 @@
 # ImmortalWrt 云编译固件
 
-[ImmortalWrt](https://github.com/immortalwrt/immortalwrt) 构建下列设备：
+基于 [ImmortalWrt](https://github.com/immortalwrt/immortalwrt) 的定制固件，支持每周自动构建，也可自行在 GitHub 上构建。
+
+## 下载固件
+
+前往 [Releases](https://github.com/bigbugcc/Immortalwrts/releases)，选择对应设备的最新发布，在 **Assets** 中下载固件。
 
 | 设备 ID | 目标 | 手动构建状态 | 定时发布状态 |
 | --- | --- | --- | --- |
 | `x86_64` | x86-64 generic，生成 ISO、VMDK 与 EXT4 镜像 | [![手动构建状态](https://github.com/bigbugcc/Immortalwrts/actions/workflows/manual-build.yml/badge.svg?branch=main)](https://github.com/bigbugcc/Immortalwrts/actions/workflows/manual-build.yml?query=branch%3Amain) | [![定时发布状态](https://github.com/bigbugcc/Immortalwrts/actions/workflows/schedule-release.yml/badge.svg?branch=main)](https://github.com/bigbugcc/Immortalwrts/actions/workflows/schedule-release.yml?query=branch%3Amain) |
 | `nn6000-v2` | Link NN6000 v2，`qualcommax/ipq60xx` | [![手动构建状态](https://github.com/bigbugcc/Immortalwrts/actions/workflows/manual-build.yml/badge.svg?branch=main)](https://github.com/bigbugcc/Immortalwrts/actions/workflows/manual-build.yml?query=branch%3Amain) | [![定时发布状态](https://github.com/bigbugcc/Immortalwrts/actions/workflows/schedule-release.yml/badge.svg?branch=main)](https://github.com/bigbugcc/Immortalwrts/actions/workflows/schedule-release.yml?query=branch%3Amain) |
 
-徽章显示本仓库 `main` 分支对应工作流的整体执行状态。两个设备共用工作流，因此显示相同徽章；点击徽章进入运行记录后，可查看各设备构建 job 的结果。
+徽章显示 `main` 分支对应工作流的整体状态；点击可查看各设备的构建结果。
 
+## 刷写与登录
 
-## ActionInfo
+1. 备份现有配置，按设备或虚拟化平台的刷写方式安装对应镜像；已有兼容固件可在管理页面选择适用的升级镜像。
+2. 电脑连接设备 LAN 口，将电脑设为自动获取 IP，浏览器打开 **http://192.168.10.1**。
+3. 按登录页面提示进入后台，设置管理密码，再配置网络和所需服务。保留旧配置升级时，管理地址可能沿用原设置。
 
-- 手动构建与每周定时发布
-- 由 `manifests/builds.json` 驱动的构建矩阵和工作流一致性检查
-- 显式启用 ccache，按上游来源、分支、runner、设备隔离并持续更新快照
-- 分阶段编译，内存不足时降低并行度重试；保存诊断 Artifact 和可选 GitHub Release
-- 默认管理地址 `192.168.10.1`
+**请核对设备型号与镜像用途，勿跨型号刷写；首次安装不确定时，先查阅设备的刷机及恢复说明。**
 
-## 使用
+## 自行构建
 
-在 GitHub Actions 中运行：
+1. Fork 本仓库，在自己的仓库中打开 **Actions**，按提示启用工作流。
+2. 选择 **Manual ImmortalWrt Build → Run workflow**。
+3. `device` 选择设备，`all` 表示全部；`branch` 留空使用默认的 `master`，`cache_mode` 保持 `readwrite` 即可。
+4. 需要发布到自己仓库的 Releases 时，勾选 `upload_release`，然后开始构建。
+5. 构建成功后，在该次运行页面的 **Artifacts** 中下载 `ImmortalWrt_设备_时间`；勾选发布后也可从 Releases 下载。
 
-- `Manual ImmortalWrt Build`：选择 `x86_64`、`nn6000-v2` 或 `all`；可临时覆盖上游分支。
-- `Scheduled ImmortalWrt Release`：默认每周构建两个设备并创建 Release；手动触发时可以用逗号分隔设备 ID。
+## LuCI 插件
 
-固件上传到 Release 前会同时作为 Action Artifact 保存。不要将 x86 与 NN6000 v2 的镜像交叉刷写。
+默认配置选择以下应用，表中名称均省略 `luci-app-` 前缀；实际包含项以对应发布的固件包清单为准。
 
-每个设备的 Artifact 和 Release 同时包含 `luci-apps-设备-时间.tar.gz` 与对应的 `.sha256`。直接归档本次编译的整个 `bin/packages` 及目标 `packages` 目录，包含 LuCI 应用、配套 APK/IPK 包、索引和内核包，保留 `bin/packages`、`bin/targets/目标/子目标/packages` 路径。压缩包附最终配置 `build.config`，固件包清单随固件发布。打包不会删除编译目录中的软件包。
+| 用途 | 插件 |
+| --- | --- |
+| 代理服务 | `passwall2`（Xray）、`homeproxy` |
+| 文件与共享 | `samba4`（局域网共享）、`vsftpd`（FTP）、`filebrowser-go`（文件管理）、`openlist`（文件列表） |
+| 网络管理 | `firewall`（防火墙）、`upnp`（自动端口映射）、`arpbind`（IP/MAC 绑定）、`appfilter`（应用过滤） |
+| 远程访问 | `ttyd`（网页终端）、`frpc`（内网穿透客户端） |
+| 唤醒与定时 | `wol`（网络唤醒）、`timewol`（定时唤醒）、`autoreboot`（定时重启） |
+| 状态与存储 | `netdata`（性能监控）、`diskman`（磁盘管理） |
+| 其他服务 | `uhttpd`（Web 服务设置）、`vlmcsd`（KMS 服务） |
 
-下载后运行 `sha256sum -c luci-apps-设备-时间.tar.gz.sha256` 校验整个压缩包，再解压。按需安装对应应用及缺少的依赖，不要一次安装所有包。仅用于同一个 Release 的固件，设备架构、APK/OPKG 格式、签名密钥及内核 ABI 必须匹配；该压缩包不是跨版本通用软件源。
+主题：Argon、Bootstrap，支持简体中文界面。
 
-## 软件源
+## 安装插件
 
-首次启动在上游中文默认设置之后，将 APK/OPKG 软件源切换到 `https://mirrors.nju.edu.cn/immortalwrt`，保留原来的版本、架构和内核 ABI 路径，并保存对应的 UCI 镜像设置。南京大学提供 master 所需的 snapshots；中科大仅同步 releases，不适用于本仓库默认的 master 构建。镜像不提供本仓库全部第三方包。
+固件默认使用南京大学 ImmortalWrt 镜像源，可在后台的软件包页面刷新列表并安装软件。保留旧配置升级时，软件源可能沿用旧设置。
 
-已刷入旧固件时，可在 SSH 中执行以下命令切换软件源（会备份现有源文件）：
+发布文件中的 `luci-apps-设备-时间.tar.gz` 是可选的软件包合集，**不是固件镜像**。下载后用配套的 `.sha256` 文件校验：
 
 ```sh
-mirror='https://mirrors.nju.edu.cn/immortalwrt'
-uci -q get 'system.@imm_init[0]' >/dev/null || uci -q add system imm_init >/dev/null
-for feeds in /etc/opkg/distfeeds.conf /etc/apk/repositories.d/distfeeds.list; do
-  [ -f "$feeds" ] || continue
-  sed -i.old \
-    -e "s|https\?://downloads\.immortalwrt\.org/|$mirror/|g" \
-    -e "s|https\?://mirrors\.vsean\.net/openwrt/|$mirror/|g" "$feeds"
-  case "$feeds" in
-    /etc/opkg/*) uci set "system.@imm_init[0].opkg_mirror=$mirror" ;;
-    /etc/apk/*) uci set "system.@imm_init[0].apk_mirror=$mirror" ;;
-  esac
-done
-uci commit system
-if command -v apk >/dev/null 2>&1; then apk update; else opkg update; fi
+sha256sum -c luci-apps-设备-时间.tar.gz.sha256
 ```
 
-保留旧设置升级后如果仍显示原来的软件源，也可执行以上命令。自编译 master 固件的内核 ABI 可能与官方 snapshots 不同，安装额外 kmod 时仍需使用匹配本次编译的包；更换镜像不会解决 ABI 不匹配。
-
-## 编译缓存与故障诊断
-
-两个入口工作流均可选择 `cache_mode`：
-
-| 模式 | 恢复 | 保存 | 用途 |
-| --- | --- | --- | --- |
-| `readwrite` | 优先同配置，再恢复同设备快照 | 编译镜像成功后保存新快照 | 默认构建与定时发布 |
-| `fresh` | 不恢复 | 编译镜像成功后保存新快照 | 排除旧缓存问题，并替换缓存 |
-| `off` | 不恢复；ccache 包装器禁用缓存 | 不保存 | 测量无缓存基线 |
-
-仅缓存 `/mnt/workdir/cache/ccache`，暂不缓存源码下载目录 `dl`、Go 模块目录、`build_dir` 或 `staging_dir`。下载后不再按文件大小删除文件，避免破坏合法源码和 Go 模块。源码下载每次重新执行，后续以实测净收益决定是否增加独立归档缓存。
-
-每个设备的 ccache 初始容量上限为 1.5 GiB，编译器按内容检查，避免重新生成的工具链仅因时间戳变化而失效。缓存 key 包含配置哈希及运行编号，每次成功构建均可积累新的编译结果；前缀恢复时 `cache-hit=false` 是正常情况，实际恢复结果看 Summary 的 `Matched key`。
-
-保存位于固件上传前，上传失败不会丢失成功编译的快照。确认新快照已出现在缓存 API 后，在当前 Git ref、上游来源、runner、分支和设备范围内仅保留本次最新一份快照，删除同范围的其他快照，并清理同分支同设备的旧 `v2` 合并缓存。API 不可用或新快照未确认时保留旧缓存。先保存再清理，期间可能短暂存在多份；清理失败时也可能留下旧快照。清理所需的 `actions: write` 权限仅授予构建 job。
-
-恢复异常时丢弃本次解压出的部分 ccache，退回空缓存编译；单纯未命中不视为错误。编译失败和取消不保存新快照。仓库默认缓存限额为 10 GB，两个设备各保留一份快照，约占最多 3 GiB 的本地条目预算；实际归档大小以 GitHub 为准。多个上游分支或 Git refs 会增加总占用，超过七天未访问也可能被淘汰，因此每周构建仍可能冷启动。
-
-每次构建上传 `build-logs-设备-运行编号-重试编号`，保留 14 天，包含：
-
-- 上游与 feeds commit、最终配置、CPU、内存和磁盘信息；
-- 每个 make 目标的完整日志、退出码、耗时和重试次数；
-- ccache 恢复结果、有效配置及每个阶段的累计命中统计。
-
-初始编译线程数默认取 `nproc`，可通过 `JOBS` 覆盖。仅日志出现明确的内存耗尽信息时减半重试一次；`FALLBACK_JOBS` 可覆盖，但必须少于初始线程数才会重试。下载失败最多重试一次。源码、补丁及普通依赖错误保留原始错误并终止，查看失败阶段日志定位具体包。
-
-验证提速时，使用相同上游和 feeds commits、最终配置，先运行 `fresh` 生成缓存，再运行 `readwrite` 验证命中，并用 `off` 对照。比较各编译阶段及完整 job 耗时，包含恢复、保存和整理缓存开销；同时记录 CPU 和线程数，避免把 runner 性能差异当作缓存收益。ccache 主要加速可缓存的 C/C++ 编译，Go/Rust 编译、链接和镜像制作仍需执行。
-
-## 本地校验
-
-```powershell
-node scripts/openwrts.mjs validate-manifest
-node scripts/openwrts.mjs generate-workflows --check
-node scripts/openwrts.mjs resolve-matrix --device nn6000-v2
-node --test tests/*.test.mjs
-```
-
-改动 `manifests/builds.json` 后运行 `node scripts/openwrts.mjs generate-workflows`，再提交生成的两个入口工作流。
-
-两个入口工作流在解析构建矩阵前自动执行缓存、编译与软件源设置的行为测试。Windows 测试默认使用 `C:/Program Files/Git/bin/bash.exe`，其他安装位置可通过 `TEST_BASH` 指定；Linux 使用 PATH 中的 Bash。
-
-缓存统一由 `scripts/cache.sh` 管理，提供 `metadata`、`init`、`stats [phase]`、`prepare` 和 `prune` 子命令。本地 ccache 操作使用 Bash；`prune` 使用脚本内嵌的 Node.js 代码访问 GitHub API，仅在 CI 保存新快照后调用。
-
-## 目录
-
-```text
-.github/workflows/  手动、定时与复用构建工作流
-configs/targets/    两个硬件目标配置
-configs/apps/       共用的 LuCI 与功能包选择
-feeds/              ImmortalWrt 专用第三方 feeds
-packages/           ImmortalWrt 专用第三方包克隆
-manifests/          唯一上游和设备构建矩阵
-scripts/            环境、源码、配置与编译脚本
-```
+将命令中的文件名替换为实际下载名称，再解压并按需安装应用及依赖，不要一次安装全部包。合集仅适用于**同一次发布的固件**，不能跨版本混用；第三方插件不一定在镜像源中，内核模块也必须与固件版本匹配。
